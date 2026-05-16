@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>98.css example</title>
+  <meta charset="UTF-8" />
+  <link rel="stylesheet" href="css/98.css" />
+  <link rel="stylesheet" href="css/main.css" />
+  <link rel="stylesheet" href="bootstrap.min.css" />
+</head>
+
+<body>
+<script src="js/jquery.js"></script>
+<script src="js/gun.js"></script>
+<script src="js/sea.js"></script>
+<aside>
+  <ul class="tree-view">
+    <li><a href="#intro">Login</a></li>
+    <li>
+      <a href="#components">Components</a>
+      <ul>
+        <li><a href="#button">Button</a></li>
+        <li><a href="#checkbox">Checkbox</a></li>
+        <li><a href="#option-button">OptionButton</a></li>
+        <li><a href="#group-box">GroupBox</a></li>
+        <li><a href="#text-box">TextBox</a></li>
+        <li><a href="#slider">Slider</a></li>
+        <li><a href="#dropdown">Dropdown</a></li>
+        <li>
+          <a href="#window">Window</a>
+          <ul>
+            <li><a href="#title-bar">Title Bar</a></li>
+            <li><a href="#window-contents">Window contents</a></li>
+            <li><a href="#status-bar">Status Bar</a></li>
+          </ul>
+        </li>
+        <li><a href="#tree-view">TreeView</a></li>
+        <li><a href="#tabs">Tabs</a></li>
+        <li><a href="#table-view">TableView</a></li>
+        <li><a href="#progress-indicator">Progress Indicator</a></li>
+        <li><a href="#field-borders">Field borders</a></li>
+      </ul>
+    </li>
+    <li><a href="#issues-contributing-etc">Issues, Contributing, etc.</a></li>
+  </ul>
+</aside>
+<main>
+  <div id="loginPage">
+    <h1>Login / Signup</h1>
+    <hr>
+    <p>Credentials will always be saved locally. All pasted data will be stored encrypted with PBKDF2</p>
+    <div class="field-row-stacked" style="width: 200px">
+      <label for="username">Username</label>
+      <input id="username" type="text" value="Centipede5"/>
+    </div>
+    <div class="field-row-stacked" style="width: 200px">
+      <label for="password">Password</label>
+      <input id="password" type="password" value="password"/>
+    </div>
+    <br/>
+    <button id="login">Login / Signup</button>
+    <br/>
+    <div id="loginFeedback" class="status-field-border" style="padding: 8px;display:none;"></div>
+  </div>
+  <div id="mainPage" style="display:none;">
+    <textarea id="view" placeholder="write here..."></textarea>
+  </div>
+</main>
+<script>
+// dApp code will go here!
+var gun = Gun(['http://localhost:8765/gun', 'https://try.axe.eco/gun']);
+var user = gun.user();
+
+document.getElementById("login").onclick = function(){
+  loginFeedback.style.display="block"
+  loginFeedback.innerText = "Reading graph...";
+  console.log('logging in with',username.value,password.value)
+  user.auth(username.value,password.value, function(e){
+    console.log(e);
+    if(e.err == 'Wrong user or password.'){
+      loginFeedback.innerText = "User not found, creating user...";
+      user.create(username.value,password.value,function(b){
+        console.log(b);
+      })
+      loginFeedback.innerText = "User created, logging in...";
+      user.auth(username.value,password.value);
+      // window.switchPage();
+    } else if(e.err){
+      loginFeedback.innerText = "Error: " + e.err;
+    } else {
+      loginFeedback.innerText = "Logged in!";
+    }
+    // window.switchPage();
+
+  },{});
+}
+
+window.switchPage = function(page){
+  
+  mainPage.style.display ="block";
+  loginPage.style.display = "none";
+  note = user.get('note').get(location.hash.replace('#','')||1);
+	view.oninput = () => { note.put(view.value) };
+	note.on((data) => { view.value = data });
+}
+
+gun.on('auth', window.switchPage);
+
+
+
+
+</script>
+</body>
+</html>
+
