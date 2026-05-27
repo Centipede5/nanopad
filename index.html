@@ -1,11 +1,10 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>98.css example</title>
+  <title>Quickpad</title>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="css/98.css" />
   <link rel="stylesheet" href="css/main.css" />
-  <link rel="stylesheet" href="bootstrap.min.css" />
 </head>
 
 <body>
@@ -13,32 +12,14 @@
 <script src="js/gun.js"></script>
 <script src="js/sea.js"></script>
 <aside>
-  <ul class="tree-view">
+  <ul  class="tree-view">
     <li><a href="#intro">Login</a></li>
     <li>
-      <a href="#components">Components</a>
-      <ul>
-        <li><a href="#button">Button</a></li>
-        <li><a href="#checkbox">Checkbox</a></li>
-        <li><a href="#option-button">OptionButton</a></li>
-        <li><a href="#group-box">GroupBox</a></li>
-        <li><a href="#text-box">TextBox</a></li>
-        <li><a href="#slider">Slider</a></li>
-        <li><a href="#dropdown">Dropdown</a></li>
-        <li>
-          <a href="#window">Window</a>
-          <ul>
-            <li><a href="#title-bar">Title Bar</a></li>
-            <li><a href="#window-contents">Window contents</a></li>
-            <li><a href="#status-bar">Status Bar</a></li>
-          </ul>
-        </li>
-        <li><a href="#tree-view">TreeView</a></li>
-        <li><a href="#tabs">Tabs</a></li>
-        <li><a href="#table-view">TableView</a></li>
-        <li><a href="#progress-indicator">Progress Indicator</a></li>
-        <li><a href="#field-borders">Field borders</a></li>
+      <a href="#components">Notes</a>
+      <ul id="notetree">
+        
       </ul>
+      <button id="addnote" style="display:none;" class="default">Add Note</button>
     </li>
     <li><a href="#issues-contributing-etc">Issues, Contributing, etc.</a></li>
   </ul>
@@ -69,6 +50,7 @@
 // dApp code will go here!
 var gun = Gun(['http://localhost:8765/gun', 'https://try.axe.eco/gun']);
 var user = gun.user();
+var note, initialized = {};
 
 document.getElementById("login").onclick = function(){
   loginFeedback.style.display="block"
@@ -98,12 +80,40 @@ window.switchPage = function(page){
   
   mainPage.style.display ="block";
   loginPage.style.display = "none";
-  note = user.get('note').get(location.hash.replace('#','')||1);
+  var noteName = location.hash.replace('#','')||1;
+  note = user.get('note').get(noteName);
+  
+  view.value = '';
 	view.oninput = () => { note.put(view.value) };
-	note.on((data) => { view.value = data });
+  note.on((data) => { 
+    console.log("note update")
+    view.value = data 
+  });
+  initialized[noteName] = true;
 }
 
-gun.on('auth', window.switchPage);
+window.initialize = function(){
+  console.log('initialized!');
+  document.getElementById('addnote').style.display = "block";
+
+  document.getElementById('addnote').onclick = function(){
+    var noteName = prompt("Enter a title for your note")
+    console.log('added note', noteName)
+    user.get('note').get(noteName).put("");
+    setTimeout(function(){window.switchPage(noteName)},500);
+  }
+  user.get('note').map().on(function(content,note) {
+    //console.log(x,y);
+    if(!document.getElementById('note-'+note)){
+      document.getElementById('notetree').innerHTML += `<li id="${'note-'+note}"><a href="#${note}">${note}</a></li>`
+    }
+    //<li><a href="#button">Button</a></li>
+  })
+  window.switchPage();
+}
+
+window.addEventListener("hashchange", window.switchPage)
+gun.on('auth', window.initialize);
 
 
 
