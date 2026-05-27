@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Quickpad</title>
+  <title>NanoPad - Decentralized Notepad</title>
   <meta charset="UTF-8" />
   <link rel="stylesheet" href="css/98.css" />
   <link rel="stylesheet" href="css/main.css" />
@@ -19,9 +19,9 @@
 <script src="js/sea.js"></script>
 <aside>
   <ul  class="tree-view">
-    <li><a href="#intro">Login</a></li>
+    <li><a href="#login">Login</a></li>
     <li>
-      <a href="#components">Notes</a>
+      <a href="#base">Notes</a>
       <ul id="notetree">
         
       </ul>
@@ -37,31 +37,75 @@
     <p>Credentials will always be saved locally. All pasted data will be stored encrypted with PBKDF2</p>
     <div class="field-row-stacked" style="width: 200px">
       <label for="username">Username</label>
-      <input id="username" type="text" value="Centipede5"/>
+      <input id="username" type="text" />
     </div>
     <div class="field-row-stacked" style="width: 200px">
       <label for="password">Password</label>
-      <input id="password" type="password" value="password"/>
+      <input id="password" type="password"/>
+    </div>
+    <div class="field-row">
+      <input checked type="checkbox" id="saveUserPass">
+      <label for="saveUserPass">Save User/Pass</label>
     </div>
     <br/>
     <button id="login">Login / Signup</button>
     <br/>
     <div id="loginFeedback" class="status-field-border" style="padding: 8px;display:none;"></div>
   </div>
-  <div id="mainPage" style="display:none;">
+  <div id="mainPage" class="mainPage" style="display:none;">
+    <div class="topbar">
+    <h3 id="noteTitleLabel" style="font-size:20px;padding:0px;margin:2px;">Test</h3>
+    <select id="viewSelect">
+      <option>Raw (coming soon)</option>
+      <option selected>Decrypted</option>
+      <option>More</option>
+    </select>
+    <button onclick="deleteActive()">Delete</button>
+    </div>
     <textarea id="view" placeholder="write here..."></textarea>
+  </div>
+  <div id="infoPage" class="mainPage" style="display:none;">
+    <h1>NanoPad</h1>
+    <p><i>Made with love and no AI by <a href="https://x.com/Centipede5dev">Centipede5</a></i></p>
+    <hr>
+    <p>
+      This project was conceived as a simple site to solve all sorts of text routing issues on the internet.
+      Ive found most solutions either clunky (sending stuff to yourself over messaging apps), filled with unnessisary friction (like pastebin or github), 
+      or missing key features like truly secure notes.
+    </p>
+    <p>
+      Here's a run-down of what makes this truly different:
+      <ol>
+        <li>Absolutely free</li>
+        <li>Decentralized using <a href="https://gun.eco/">Gun.js</a></li>
+        <li>Data encrypted using YOUR password-based keys - there is 0 way for anyone without this key to see your data (me included)</li>
+        <li>Open-source</li>
+        <li>Trivially self-hosted (just fork the repo! no server needed!)</li>
+      </ol>
+    </p>
   </div>
 </main>
 <script>
 // dApp code will go here!
 var gun = Gun(['http://localhost:8765/gun', 'https://try.axe.eco/gun']);
-var user = gun.user();
+var user = gun.user().recall({sessionStorage: true});
 var note, initialized = {};
+var lasthash = '';
+
+if(localStorage.getItem('username')&&!user.is){
+  document.getElementById("username").value = localStorage.getItem('username')
+  document.getElementById("password").value = localStorage.getItem('password')
+  document.getElementById("login").click();
+}
 
 document.getElementById("login").onclick = function(){
   loginFeedback.style.display="block"
   loginFeedback.innerText = "Reading graph...";
-  console.log('logging in with',username.value,password.value)
+  // console.log('logging in with',username.value,password.value)
+  if(saveUserPass.checked){
+    localStorage.setItem('username',username.value)
+    localStorage.setItem('password',password.value)
+  }
   user.auth(username.value,password.value, function(e){
     console.log(e);
     if(e.err == 'Wrong user or password.'){
@@ -81,44 +125,82 @@ document.getElementById("login").onclick = function(){
 
   },{});
 }
+function deleteActive(){
+  noteName = lasthash;
+  if(noteName=='base'){
+    alert('you cannot delete your base note - please simply delete all the data')
+    return;
+  }
+  if(confirm("please confirm you are deleting this note")){
+    user.get('note').get(noteName).put(null);
+    document.getElementById('note-'+noteName).style.display = 'none';
+    window.location.hash = '#base'
+  }
+}
 
 window.switchPage = function(page){
   
-  mainPage.style.display ="block";
-  loginPage.style.display = "none";
-  var noteName = location.hash.replace('#','')||1;
+  var newhash = location.hash.replace('#','')
+  if(newhash == 'login'){
+      loginPage.style.display = "block";
+      infoPage.style.display = "none";
+      mainPage.style.display = "none";
+      lasthash = newhash;
+      return;
+  }else if(newhash == 'issues-contributing-etc'){
+      loginPage.style.display = "none";
+      infoPage.style.display = "block";
+      mainPage.style.display = "none";
+      lasthash = newhash;
+      return;
+  }else{
+      loginPage.style.display = "none";
+      infoPage.style.display = "none";
+      mainPage.style.display = "block";
+      lasthash = newhash;
+  }
+  var noteName = location.hash.replace('#','')||'base';
+  noteTitleLabel.innerHTML = noteName;
+  //note = user.get('note').get(noteName);
   note = user.get('note').get(noteName);
   
   view.value = '';
-	view.oninput = () => { note.put(view.value) };
-  note.on((data) => { 
+  //await SEA.decrypt(await SEA.encrypt('hello self', user.pair()),user.pair())
+	view.oninput = async () => { note.put(await SEA.encrypt(view.value, user.pair())) };
+  note.on(async (data) => { 
     console.log("note update")
-    view.value = data 
+    view.value = await SEA.decrypt(data, user.pair()); 
+    //view.value = data 
   });
   initialized[noteName] = true;
+  lasthash = newhash;
 }
 
 window.initialize = function(){
   console.log('initialized!');
   document.getElementById('addnote').style.display = "block";
+  window.location.hash = "#base"
 
-  document.getElementById('addnote').onclick = function(){
-    var noteName = prompt("Enter a title for your note")
+  document.getElementById('addnote').onclick = async function(){
+    var noteName = prompt("Enter a title for your note");
+    noteName = encodeURIComponent(noteName);
     console.log('added note', noteName)
-    user.get('note').get(noteName).put("");
+    //await SEA.decrypt(await SEA.encrypt('hello self', user.pair()),user.pair())
+    user.get('note').get(noteName).put(await SEA.encrypt('', user.pair()))
     setTimeout(function(){window.switchPage(noteName)},500);
   }
   user.get('note').map().on(function(content,note) {
-    //console.log(x,y);
-    if(!document.getElementById('note-'+note)){
-      document.getElementById('notetree').innerHTML += `<li id="${'note-'+note}"><a href="#${note}">${note}</a></li>`
+    //console.log(content,note);
+    if(!document.getElementById('note-'+note)&&content != null){
+      document.getElementById('notetree').innerHTML += `<li id="${'note-'+note}"><a href="#${note}">${decodeURIComponent(note)}</a></li>`
     }
     //<li><a href="#button">Button</a></li>
   })
   window.switchPage();
 }
 
-window.addEventListener("hashchange", window.switchPage)
+var lasthash = '';
+window.addEventListener("hashchange", window.switchPage);
 gun.on('auth', window.initialize);
 
 
