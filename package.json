@@ -9,6 +9,7 @@
   "license": "ISC",
   "description": "",
   "dependencies": {
+    "@wasmer/sdk": "^0.10.0",
     "gun": "^0.2020.1241"
   }
 }
